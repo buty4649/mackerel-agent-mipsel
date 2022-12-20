@@ -1,0 +1,13 @@
+include Makefile
+
+.PHONY: crossbuild-package-mipsel
+crossbuild-package-mipsel: deps
+	mkdir -p ./build-linux-mipsel
+	GOOS=linux GOARCH=mipsle make build
+	mv build/$(MACKEREL_AGENT_NAME) build-linux-mipsel
+
+.PHONY: deb-v2-mipsel
+deb-v2-mipsel: crossbuild-package-mipsel
+	BUILD_DIRECTORY=build-linux-mipsel BUILD_SYSTEMD=1 MACKEREL_AGENT_NAME=$(MACKEREL_AGENT_NAME) _tools/packaging/prepare-deb-build.sh
+	docker run --rm -v "$(PWD)":/workspace -w /workspace/packaging/deb-build --entrypoint /bin/sh mackerel/docker-mackerel-deb-builder \
+		-c "apt-get update && apt-get install -y binutils-mipsel-linux-gnu; debuild --no-tgz-check -uc -us -amipsel; chown $(shell id -u):$(shell id -g) -R /workspace/packaging/deb-build"
